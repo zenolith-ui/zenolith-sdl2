@@ -13,8 +13,8 @@
         //    .hash = "1220685f1c039a53076ef169ef2e2959aeb054c86d4eda5aac736885daa0bf2f6910",
         //},
         .zenolith = .{
-            .url = "https://git.mzte.de/zenolith/zenolith/archive/4705b425154b40a1718d2102ab6ad4eecf5135d9.tar.gz",
-            .hash = "122039dbae23348c8d9320af685c4d43420b8f362d53898a1d57f7ec0ced04ab8711",
+            .url = "https://git.mzte.de/zenolith/zenolith/archive/8908dbcc0d0f54bd942a2fd1cf973b5ef2ef9ffc.tar.gz",
+            .hash = "122099a1bd57dee5e0a2b454ab435755b9b206fe0de4f7949edc2ae972af2663a1f4",
         },
     },
 }

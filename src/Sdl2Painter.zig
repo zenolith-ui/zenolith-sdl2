@@ -41,23 +41,33 @@ pub fn texturedRect(
     ) != 0) return error.Render;
 }
 
-pub fn text(
+pub fn span(
     self: *Sdl2Painter,
     pos: zenolith.layout.Position,
-    zchunk: zenolith.font.Chunk,
-    color: zenolith.Color,
+    zspan: zenolith.text.Span,
 ) !void {
-    const chunk = zchunk.downcast(Sdl2Font.Chunk) orelse unreachable;
-    if (c.SDL_SetTextureColorMod(chunk.font.atlas, color.r, color.g, color.b) != 0) return error.Render;
-    if (c.SDL_SetTextureAlphaMod(chunk.font.atlas, color.a) != 0) return error.Render;
-    for (chunk.glyphs.items) |g| {
+    const font = zspan.font.downcast(Sdl2Font) orelse unreachable;
+
+    if (c.SDL_SetTextureColorMod(
+        font.atlas,
+        zspan.style.color.r,
+        zspan.style.color.g,
+        zspan.style.color.b,
+    ) != 0) return error.Render;
+    if (c.SDL_SetTextureAlphaMod(font.atlas, zspan.style.color.a) != 0) return error.Render;
+
+    for (zspan.glyphs.items) |g| {
         if (c.SDL_RenderCopy(
             self.renderer,
-            chunk.font.atlas,
-            &util.toSdlRect(g.glyph.sprite),
+            font.atlas,
+            &util.toSdlRect(
+                // This is sound as the span will have already gotten the glyph from the font,
+                // causing it to add it to the map.
+                font.getSprite(g.glyph.codepoint, zspan.style.size) orelse unreachable,
+            ),
             &util.toSdlRect(.{
-                .pos = pos.add(g.pos),
-                .size = g.glyph.sprite.size,
+                .pos = pos.add(g.position),
+                .size = g.glyph.size,
             }),
         ) != 0) return error.Render;
     }

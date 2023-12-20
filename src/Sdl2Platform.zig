@@ -62,7 +62,7 @@ pub fn init(options: InitOptions) InitializeError!Sdl2Platform {
         window_pos[1],
         options.window_size[0],
         options.window_size[1],
-        c.SDL_WINDOW_SHOWN, // TODO: add API to change this
+        c.SDL_WINDOW_SHOWN | c.SDL_WINDOW_RESIZABLE, // TODO: add API to change this
     ) orelse return error.CreateWindow;
     errdefer c.SDL_DestroyWindow(window);
 
@@ -294,7 +294,7 @@ pub fn createFont(self: Sdl2Platform, opts: CreateFontOptions) CreateFontError!S
         .face = face,
         .atlas = atlas,
         .renderer = self.renderer,
-        .glyphs = std.AutoArrayHashMap(Sdl2Font.GlyphProperties, Sdl2Font.Glyph).init(self.alloc),
+        .glyphs = std.AutoArrayHashMap(Sdl2Font.GlyphProperties, Sdl2Font.AtlasGlyph).init(self.alloc),
         .pixel_buf = std.ArrayList(u8).init(self.alloc),
     };
 }

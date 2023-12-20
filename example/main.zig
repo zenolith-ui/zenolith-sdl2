@@ -15,7 +15,7 @@ pub fn main() !void {
     });
     defer platform.deinit();
 
-    var font = zenolith.font.Font.create(try platform.createFont(.{
+    var font = zenolith.text.Font.create(try platform.createFont(.{
         .source = .{ .path = "/usr/share/fonts/noto/NotoSans-Regular.ttf" },
     }), {});
     defer font.deinit();
@@ -45,29 +45,67 @@ pub fn main() !void {
                 },
             },
             .padding = 10,
-            .font_size = 32,
-            .text_color = zenolith.Color.fromInt(0xcdd6f4ff),
+            .font_style = .{},
         };
 
         root.data.attreebutes = attrs;
     }
 
     root.downcast(zenolith.widget.Box).?.orth_expand = true;
-    try root.downcast(zenolith.widget.Box).?.addChildPositioned(root, null, try zenolith.widget.Label.init(.{
-        .alloc = alloc,
-        .font = &font,
-        .text = "Hello, Zenolith!",
-        .size = 64,
-    }), .center);
+    try root.downcast(zenolith.widget.Box).?.addChildPositioned(
+        root,
+        null,
+        try zenolith.widget.Label.init(alloc, .{
+            .font = &font,
+            .text = "Hello, Zenolith!",
+            .style = .{ .size = 64 },
+        }),
+        .center,
+    );
 
-    try root.addChild(null, try zenolith.widget.Label.init(.{
-        .alloc = alloc,
+    try root.addChild(null, try zenolith.widget.Label.init(alloc, .{
         .font = &font,
         .text = "Labels!",
-        .size = 32,
+        .style = .{ .size = 32 },
     }));
 
     try root.addChild(null, try zenolith.widget.Button.init(alloc, "Click Me!"));
+
+    {
+        var chunk = zenolith.text.Chunk.init(alloc);
+        errdefer chunk.deinit();
+
+        try chunk.spans.append(.{ .span = try zenolith.text.Span.init(alloc, .{
+            .font = &font,
+            .text = "Span 1",
+            .style = .{ .size = 32 },
+        }) });
+        try chunk.spans.append(.{ .span = try zenolith.text.Span.init(alloc, .{
+            .font = &font,
+            .text = "Span 2",
+            .style = .{ .color = zenolith.Color.fromInt(0xff0000ff) },
+        }) });
+        try chunk.spans.append(.{ .span = try zenolith.text.Span.init(alloc, .{
+            .font = &font,
+            .text = "Span 3",
+        }), .wrap_mode = .always });
+
+        try chunk.spans.append(.{ .span = try zenolith.text.Span.init(alloc, .{
+            .font = &font,
+            .text = "abcdefghijklmnopqrstuvwxyz",
+            .style = .{ .size = 48 },
+        }), .wrap_mode = .always });
+
+        for ("abcdefghijklmnopqrstuvwxyz") |ch| {
+            try chunk.spans.append(.{ .span = try zenolith.text.Span.init(alloc, .{
+                .font = &font,
+                .text = &.{ch},
+                .style = .{ .size = 48 },
+            }) });
+        }
+
+        try root.addChild(null, try zenolith.widget.ChunkView.init(alloc, chunk));
+    }
 
     try root.treevent(zenolith.treevent.Link{
         .parent = null,

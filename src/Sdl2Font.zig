@@ -12,61 +12,36 @@ atlas: *c.SDL_Texture,
 renderer: *c.SDL_Renderer,
 
 /// This is an ArrayHashMap to speed up iteration which is requried for collision checking.
-glyphs: std.AutoArrayHashMap(GlyphProperties, Glyph),
+glyphs: std.AutoArrayHashMap(GlyphProperties, AtlasGlyph),
 
 /// A buffer for creating glyph pixel data in for SDL2 textures.
 pixel_buf: std.ArrayList(u8),
 
 const Sdl2Font = @This();
 
-pub const Chunk = struct {
-    font: *Sdl2Font,
-    glyphs: std.ArrayList(PositionedGlyph),
-    // Saving the size here to improve performance by not recalculating this.
-    // This is an immutable data structure.
-    size: zenolith.layout.Size,
-
-    pub fn deinit(self: Chunk) void {
-        self.glyphs.deinit();
-    }
-
-    pub fn getSize(self: Chunk) zenolith.layout.Size {
-        return self.size;
-    }
-};
-
-const PositionedGlyph = struct {
-    glyph: Glyph,
-    pos: zenolith.layout.Position,
-};
-
-pub const Glyph = struct {
-    /// Rectangle in atlas-local coordinates of this glyph.
+pub const AtlasGlyph = struct {
+    glyph: zenolith.text.Glyph,
     sprite: zenolith.layout.Rectangle,
-
-    /// Offset the glyph is rendered at.
-    bearing: [2]i32,
-    advance: usize,
 };
 
 pub const GlyphProperties = struct {
     codepoint: u21,
-    size: u32,
+    size: usize,
 };
 
-pub fn deinit(self_: Sdl2Font) void {
-    var self = self_;
+pub fn deinit(self: *Sdl2Font) void {
     c.SDL_DestroyTexture(self.atlas);
     _ = c.FT_Done_Face(self.face);
     self.glyphs.deinit();
     self.pixel_buf.deinit();
 }
 
-pub fn getGlyph(self: *Sdl2Font, props: GlyphProperties) !Glyph {
-    if (self.glyphs.get(props)) |g| return g;
+pub fn getGlyph(self: *Sdl2Font, codepoint: u21, style: zenolith.text.Style) !zenolith.text.Glyph {
+    const props = GlyphProperties{ .codepoint = codepoint, .size = style.size };
+    if (self.glyphs.get(props)) |g| return g.glyph;
 
-    try ffi.handleFTError(c.FT_Set_Pixel_Sizes(self.face, 0, props.size));
-    try ffi.handleFTError(c.FT_Load_Char(self.face, props.codepoint, c.FT_LOAD_RENDER));
+    try ffi.handleFTError(c.FT_Set_Pixel_Sizes(self.face, 0, @intCast(style.size)));
+    try ffi.handleFTError(c.FT_Load_Char(self.face, codepoint, c.FT_LOAD_RENDER));
 
     const bmp = self.face.*.glyph.*.bitmap;
 
@@ -75,18 +50,27 @@ pub fn getGlyph(self: *Sdl2Font, props: GlyphProperties) !Glyph {
         .size = .{ .width = 0, .height = 0 },
     } else try self.addAtlastSprite(bmp.buffer[0 .. bmp.rows * bmp.width], bmp.width);
 
-    const glyph = Glyph{
-        .sprite = rect,
+    const glyph = zenolith.text.Glyph{
+        .codepoint = codepoint,
+        .size = rect.size,
         .bearing = .{
-            self.face.*.glyph.*.bitmap_left,
-            self.face.*.glyph.*.bitmap_top,
+            .x = self.face.*.glyph.*.bitmap_left,
+            .y = -self.face.*.glyph.*.bitmap_top,
         },
         // I see no point in supporting negative glyph advance.
         .advance = @intCast(@max(0, self.face.*.glyph.*.advance.x) >> 6),
     };
 
-    try self.glyphs.put(props, glyph);
+    try self.glyphs.put(props, .{ .glyph = glyph, .sprite = rect });
     return glyph;
+}
+
+pub fn yOffset(self: *Sdl2Font, size: usize) usize {
+    if (c.FT_Set_Pixel_Sizes(self.face, 0, @intCast(size)) != 0)
+        // TODO: wonk
+        @panic("Unable to FT_Set_Pixel_Sizes for determining y offset");
+
+    return @intCast(self.face.*.size.*.metrics.height >> 6);
 }
 
 fn getSize(self: *Sdl2Font) zenolith.layout.Size {
@@ -110,8 +94,8 @@ pub fn addAtlastSprite(self: *Sdl2Font, data: []const u8, width: usize) !zenolit
     var collision = zenolith.layout.Rectangle{
         // start in bottom right
         .pos = .{
-            .x = size.width - width,
-            .y = size.height,
+            .x = @intCast(size.width - width),
+            .y = @intCast(size.height),
         },
 
         // size of glyph + padding
@@ -146,7 +130,7 @@ pub fn addAtlastSprite(self: *Sdl2Font, data: []const u8, width: usize) !zenolit
         },
     };
 
-    if (collision.pos.y + collision.size.height - padding > size.height)
+    if (@as(usize, @intCast(collision.pos.y)) + collision.size.height - padding > size.height)
         return error.AtlastTooSmall;
 
     try self.pixel_buf.resize(data.len * 4);
@@ -174,93 +158,16 @@ pub fn addAtlastSprite(self: *Sdl2Font, data: []const u8, width: usize) !zenolit
     return rect;
 }
 
-pub fn layout(
-    self: *Sdl2Font,
-    text: []const u8,
-    size: usize,
-    wrap: zenolith.font.TextWrap,
-) !zenolith.font.Chunk {
-    _ = wrap;
-    var glyphs = std.ArrayList(PositionedGlyph).init(self.pixel_buf.allocator);
-    errdefer glyphs.deinit();
-
-    var cur_pos = zenolith.layout.Position{
-        // We start in the middle of the possible range to leave as much space in all directions
-        // as possible. This is all aligned to 0/0 in the last layout step.
-        .x = std.math.maxInt(usize) / 2,
-        .y = std.math.maxInt(usize) / 2,
-    };
-
-    // This is the position of the top-left-most glyph. This is later subtracted from all positions.
-    var min_pos = zenolith.layout.Position{
-        .x = std.math.maxInt(usize),
-        .y = std.math.maxInt(usize),
-    };
-
-    // The height of the current line of text.
-    var cur_line_height: usize = 0;
-
-    var iter = std.unicode.Utf8Iterator{ .i = 0, .bytes = text };
-    while (iter.nextCodepoint()) |codepoint| {
-        // TODO: correctly calculate size of next line first
-        if (codepoint == '\n') {
-            cur_pos.x = std.math.maxInt(usize) / 2;
-            cur_pos.y += @intCast(self.face.*.size.*.metrics.height >> 6);
-
-            cur_line_height = 0;
-
-            continue;
-        }
-
-        const glyph = try self.getGlyph(.{
-            .size = @intCast(size),
-            .codepoint = codepoint,
-        });
-        const gpos = zenolith.layout.Position{
-            // hacky addition with negative numbers
-            .x = cur_pos.x +% @as(usize, @bitCast(@as(isize, glyph.bearing[0]))),
-            .y = cur_pos.y -% @as(usize, @bitCast(@as(isize, glyph.bearing[1]))),
-        };
-
-        try glyphs.append(.{
-            .glyph = glyph,
-            .pos = gpos,
-        });
-
-        cur_pos.x += glyph.advance;
-
-        if (glyph.sprite.size.height > cur_line_height) cur_line_height = glyph.sprite.size.height;
-
-        if (gpos.x < min_pos.x) min_pos.x = gpos.x;
-        if (gpos.y < min_pos.y) min_pos.y = gpos.y;
-    }
-
-    var csize = zenolith.layout.Size.zero;
-
-    // Position glyphs at top left and calculate chunk size.
-    for (glyphs.items) |*g| {
-        const new_pos = g.pos.sub(min_pos);
-        g.pos = new_pos;
-
-        const xmax = g.pos.x + g.glyph.sprite.size.width;
-        const ymax = g.pos.y + g.glyph.sprite.size.height;
-        if (xmax > csize.width) csize.width = xmax;
-        if (ymax > csize.height) csize.height = ymax;
-    }
-
-    return zenolith.font.Chunk.create(Chunk{
-        .font = self,
-        .glyphs = glyphs,
-        .size = csize,
-    }, {});
+pub fn getSprite(self: *Sdl2Font, codepoint: u21, size: usize) ?zenolith.layout.Rectangle {
+    return (self.glyphs.get(.{ .codepoint = codepoint, .size = size }) orelse return null).sprite;
 }
 
 fn isTouchingAnyOnTop(self: *Sdl2Font, rect: zenolith.layout.Rectangle) bool {
     if (rect.pos.y == 0) return true;
     for (self.glyphs.unmanaged.entries.items(.value)) |other| {
-        if (other.sprite.pos.y + other.sprite.size.height == rect.pos.y and
-            other.sprite.pos.x < rect.pos.x + rect.size.width and
-            other.sprite.pos.x + other.sprite.size.width > rect.pos.x) return true;
+        if (other.sprite.pos.y + @as(isize, @intCast(other.sprite.size.height)) == rect.pos.y and
+            other.sprite.pos.x < rect.pos.x + @as(isize, @intCast(rect.size.width)) and
+            other.sprite.pos.x + @as(isize, @intCast(other.sprite.size.width)) > rect.pos.x) return true;
     }
     return false;
 }
@@ -268,9 +175,9 @@ fn isTouchingAnyOnTop(self: *Sdl2Font, rect: zenolith.layout.Rectangle) bool {
 fn isTouchingAnyOnLeft(self: *Sdl2Font, rect: zenolith.layout.Rectangle) bool {
     if (rect.pos.x == 0) return true;
     for (self.glyphs.unmanaged.entries.items(.value)) |other| {
-        if (other.sprite.pos.x + other.sprite.size.width == rect.pos.x and
-            other.sprite.pos.y < rect.pos.y + rect.size.height and
-            other.sprite.pos.y + other.sprite.size.height > rect.pos.y) return true;
+        if (other.sprite.pos.x + @as(isize, @intCast(other.sprite.size.width)) == rect.pos.x and
+            other.sprite.pos.y < rect.pos.y + @as(isize, @intCast(rect.size.height)) and
+            other.sprite.pos.y + @as(isize, @intCast(other.sprite.size.height)) > rect.pos.y) return true;
     }
     return false;
 }
