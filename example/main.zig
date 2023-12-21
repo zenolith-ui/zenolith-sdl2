@@ -5,6 +5,7 @@ const zsdl2 = @import("zenolith-sdl2");
 pub const zenolith_options = struct {
     pub const platform_impls = [_]type{zsdl2.Sdl2Platform};
     pub const painter_impls = [_]type{zsdl2.Sdl2Painter};
+    pub const debug_render = true;
 };
 
 pub fn main() !void {

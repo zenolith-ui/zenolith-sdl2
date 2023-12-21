@@ -26,7 +26,7 @@ pub const AtlasGlyph = struct {
 
 pub const GlyphProperties = struct {
     codepoint: u21,
-    size: usize,
+    size: u31,
 };
 
 pub fn deinit(self: *Sdl2Font) void {
@@ -48,7 +48,7 @@ pub fn getGlyph(self: *Sdl2Font, codepoint: u21, style: zenolith.text.Style) !ze
     const rect: zenolith.layout.Rectangle = if (bmp.rows * bmp.width == 0) .{
         .pos = .{ .x = 0, .y = 0 },
         .size = .{ .width = 0, .height = 0 },
-    } else try self.addAtlastSprite(bmp.buffer[0 .. bmp.rows * bmp.width], bmp.width);
+    } else try self.addAtlastSprite(bmp.buffer[0 .. bmp.rows * bmp.width], @intCast(bmp.width));
 
     const glyph = zenolith.text.Glyph{
         .codepoint = codepoint,
@@ -65,7 +65,7 @@ pub fn getGlyph(self: *Sdl2Font, codepoint: u21, style: zenolith.text.Style) !ze
     return glyph;
 }
 
-pub fn yOffset(self: *Sdl2Font, size: usize) usize {
+pub fn yOffset(self: *Sdl2Font, size: u31) u31 {
     if (c.FT_Set_Pixel_Sizes(self.face, 0, @intCast(size)) != 0)
         // TODO: wonk
         @panic("Unable to FT_Set_Pixel_Sizes for determining y offset");
@@ -83,7 +83,7 @@ fn getSize(self: *Sdl2Font) zenolith.layout.Size {
     return .{ .width = @intCast(w), .height = @intCast(h) };
 }
 
-pub fn addAtlastSprite(self: *Sdl2Font, data: []const u8, width: usize) !zenolith.layout.Rectangle {
+pub fn addAtlastSprite(self: *Sdl2Font, data: []const u8, width: u31) !zenolith.layout.Rectangle {
     std.debug.assert(data.len % width == 0);
 
     // Amount of pixels to leave empty between glyphs to avoid scaling artifacts.
@@ -101,7 +101,7 @@ pub fn addAtlastSprite(self: *Sdl2Font, data: []const u8, width: usize) !zenolit
         // size of glyph + padding
         .size = .{
             .width = width + padding,
-            .height = @divExact(data.len, width) + padding,
+            .height = @intCast(@divExact(data.len, width) + padding),
         },
     };
 
@@ -130,7 +130,7 @@ pub fn addAtlastSprite(self: *Sdl2Font, data: []const u8, width: usize) !zenolit
         },
     };
 
-    if (@as(usize, @intCast(collision.pos.y)) + collision.size.height - padding > size.height)
+    if (@as(u31, @intCast(collision.pos.y)) + collision.size.height - padding > size.height)
         return error.AtlastTooSmall;
 
     try self.pixel_buf.resize(data.len * 4);
@@ -139,11 +139,11 @@ pub fn addAtlastSprite(self: *Sdl2Font, data: []const u8, width: usize) !zenolit
         @memset(self.pixel_buf.items[i * 4 .. i * 4 + 4], pix);
     }
 
-    const rect = .{
+    const rect = zenolith.layout.Rectangle{
         .pos = collision.pos,
         .size = .{
             .width = width,
-            .height = @divExact(data.len, width),
+            .height = @intCast(@divExact(data.len, width)),
         },
     };
 
@@ -158,7 +158,7 @@ pub fn addAtlastSprite(self: *Sdl2Font, data: []const u8, width: usize) !zenolit
     return rect;
 }
 
-pub fn getSprite(self: *Sdl2Font, codepoint: u21, size: usize) ?zenolith.layout.Rectangle {
+pub fn getSprite(self: *Sdl2Font, codepoint: u21, size: u31) ?zenolith.layout.Rectangle {
     return (self.glyphs.get(.{ .codepoint = codepoint, .size = size }) orelse return null).sprite;
 }
 
