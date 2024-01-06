@@ -4,17 +4,6 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    //const zenolith_mod = b.addModule("zenolith", .{
-    //    .source_file = .{ .path = "../zenolith/src/main.zig" },
-    //    .dependencies = &.{.{
-    //        .name = "statspatch",
-    //        .module = b.dependency("statspatch", .{
-    //            .target = target,
-    //            .optimize = optimize,
-    //        }).module("statspatch"),
-    //    }},
-    //});
-
     const zenolith_mod = b.dependency("zenolith", .{
         .target = target,
         .optimize = optimize,

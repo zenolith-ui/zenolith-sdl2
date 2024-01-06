@@ -8,13 +8,10 @@
     .paths = .{""},
 
     .dependencies = .{
-        //.statspatch = .{
-        //    .url = "https://git.mzte.de/LordMZTE/statspatch/archive/231e3ce529efa9a084fb095ff570dfd985ca9a7d.tar.gz",
-        //    .hash = "1220685f1c039a53076ef169ef2e2959aeb054c86d4eda5aac736885daa0bf2f6910",
-        //},
         .zenolith = .{
-            .url = "https://git.mzte.de/zenolith/zenolith/archive/80209aceac8f190173d80217f93ee3ab3a290e32.tar.gz",
-            .hash = "1220a9ee615b63309a1e1b850978543d442c4132a758845dba9b77ff860541a39e1e",
+            //.path = "../zenolith",
+            .url = "git+https://git.mzte.de/zenolith/zenolith.git#26628bb9c3f514c454217f563622c0d42ea2d04e",
+            .hash = "12209ba94b8bd8179acc542389ed82fd53ac392ef6546759a63ac66845e1971ee70b",
         },
     },
 }
