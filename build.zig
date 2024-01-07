@@ -10,17 +10,21 @@ pub fn build(b: *std.Build) void {
     }).module("zenolith");
 
     const mod = b.addModule("zenolith-sdl2", .{
-        .source_file = .{ .path = "src/main.zig" },
-        .dependencies = &.{.{ .name = "zenolith", .module = zenolith_mod }},
+        .root_source_file = .{ .path = "src/main.zig" },
+        .imports = &.{.{ .name = "zenolith", .module = zenolith_mod }},
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
     });
+    mod.linkSystemLibrary("SDL2", .{});
+    mod.linkSystemLibrary("freetype2", .{});
 
     const main_tests = b.addTest(.{
         .root_source_file = .{ .path = "src/main.zig" },
         .target = target,
         .optimize = optimize,
     });
-    main_tests.addModule("zenolith", zenolith_mod);
-    addPlatformDeps(main_tests);
+    main_tests.root_module.addImport("zenolith", zenolith_mod);
 
     const run_main_tests = b.addRunArtifact(main_tests);
 
@@ -33,9 +37,8 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    example_exe.addModule("zenolith", zenolith_mod);
-    example_exe.addModule("zenolith-sdl2", mod);
-    addPlatformDeps(example_exe);
+    example_exe.root_module.addImport("zenolith", zenolith_mod);
+    example_exe.root_module.addImport("zenolith-sdl2", mod);
 
     b.installArtifact(example_exe);
 
@@ -43,10 +46,4 @@ pub fn build(b: *std.Build) void {
 
     const run_example_step = b.step("run-example", "Runs the example");
     run_example_step.dependOn(&run_example.step);
-}
-
-fn addPlatformDeps(artifact: *std.Build.Step.Compile) void {
-    artifact.linkLibC();
-    artifact.linkSystemLibrary("SDL2");
-    artifact.linkSystemLibrary("freetype2");
 }
