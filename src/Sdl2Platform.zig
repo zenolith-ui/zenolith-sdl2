@@ -3,6 +3,9 @@ const zenolith = @import("zenolith");
 
 const ffi = @import("ffi.zig");
 const c = ffi.c;
+const util = @import("util.zig");
+
+const log = std.log.scoped(.zenolith_sdl2);
 
 const Sdl2Font = @import("Sdl2Font.zig");
 const Sdl2Painter = @import("Sdl2Painter.zig");
@@ -215,6 +218,49 @@ pub fn run(
                     .action = .click,
                 });
             },
+
+            c.SDL_KEYDOWN, c.SDL_KEYUP => {
+                if (util.convertScancode(ev.key.keysym.scancode)) |sc| {
+                    const m = ev.key.keysym.mod;
+
+                    const mods = zenolith.key.Modifiers{
+                        .shift = m & c.KMOD_SHIFT != 0,
+                        .ctrl = m & c.KMOD_CTRL != 0,
+                        .alt = m & c.KMOD_ALT != 0,
+                        .meta = m & c.KMOD_GUI != 0,
+                        .mode = m & c.KMOD_MODE != 0,
+                    };
+
+                    switch (ev.type) {
+                        c.SDL_KEYUP => {
+                            try zenolith.treevent.fire(root, zenolith.treevent.KeyPress{
+                                .scancode = sc,
+                                .modifiers = mods,
+                                .action = .up,
+                            });
+                        },
+                        c.SDL_KEYDOWN => {
+                            if (ev.key.repeat == 0) {
+                                try zenolith.treevent.fire(root, zenolith.treevent.KeyPress{
+                                    .scancode = sc,
+                                    .modifiers = mods,
+                                    .action = .down,
+                                });
+                            }
+
+                            try zenolith.treevent.fire(root, zenolith.treevent.KeyPress{
+                                .scancode = sc,
+                                .modifiers = mods,
+                                .action = .press,
+                            });
+                        },
+                        else => unreachable,
+                    }
+                } else {
+                    log.warn("Got key event with unknown scancode: {}", .{ev.key.keysym});
+                }
+            },
+
             else => {},
         }
 
@@ -224,7 +270,7 @@ pub fn run(
         if (c.SDL_RenderClear(self.renderer) != 0) return error.Render;
 
         var painter = zenolith.painter.Painter.create(Sdl2Painter{ .renderer = self.renderer }, {});
-        try root.treevent(zenolith.treevent.Draw{ .painter = &painter });
+        try zenolith.treevent.fire(root, zenolith.treevent.Draw{ .painter = &painter });
 
         c.SDL_RenderPresent(self.renderer);
     }

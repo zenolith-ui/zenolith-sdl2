@@ -1,8 +1,7 @@
 pub const c = @cImport({
-    @cInclude("SDL2/SDL.h");
+    @cInclude("SDL.h");
     @cInclude("freetype/freetype.h");
 });
-
 
 // This error union as well as the handleFTError function has been kindly involuntarily donated
 // by the awesome mach-freetype library.
