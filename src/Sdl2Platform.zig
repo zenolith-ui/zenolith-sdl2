@@ -115,6 +115,8 @@ pub fn run(
         self.initial_run = false;
     }
 
+    var last_time = std.time.nanoTimestamp();
+
     while (true) {
         var ev: c.SDL_Event = undefined;
 
@@ -259,7 +261,12 @@ pub fn run(
         if (c.SDL_RenderClear(self.renderer) != 0) return error.Render;
 
         var painter = zenolith.painter.Painter.create(Sdl2Painter{ .renderer = self.renderer }, {});
-        try zenolith.treevent.fire(root, zenolith.treevent.Draw{ .painter = &painter });
+        const current_time = std.time.nanoTimestamp();
+        try zenolith.treevent.fire(root, zenolith.treevent.Draw{
+            .painter = &painter,
+            .dt = @intCast(current_time - last_time),
+        });
+        last_time = current_time;
 
         c.SDL_RenderPresent(self.renderer);
     }
