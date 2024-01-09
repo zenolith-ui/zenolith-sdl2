@@ -108,14 +108,10 @@ pub fn main() !void {
         try root.addChild(null, try zenolith.widget.ChunkView.init(alloc, chunk));
     }
 
-    try root.treevent(zenolith.treevent.Link{
+    try zenolith.treevent.fire(root, zenolith.treevent.Link{
         .parent = null,
         .platform = &zplatform,
     });
 
-    while (try platform.run(root)) |ev| {
-        if (ev.downcast(zenolith.backevent.ButtonActivated)) |btn| {
-            std.debug.print("Button @ {*} clicked!\n", .{btn.btn_widget});
-        }
-    }
+    try platform.run(root);
 }

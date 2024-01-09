@@ -19,7 +19,6 @@ alloc: std.mem.Allocator,
 window: *c.SDL_Window,
 renderer: *c.SDL_Renderer,
 freetype: c.FT_Library,
-backevent_id: u32,
 mouse_pos: ?zenolith.layout.Position,
 initial_run: bool,
 
@@ -76,9 +75,6 @@ pub fn init(options: InitOptions) InitializeError!Sdl2Platform {
     ) orelse return error.CreateRenderer;
     errdefer c.SDL_DestroyRenderer(renderer);
 
-    const backevent_id = c.SDL_RegisterEvents(1);
-    if (backevent_id == std.math.maxInt(u32)) return error.InitializeSDL2;
-
     var freetype: c.FT_Library = undefined;
     if (c.FT_Init_FreeType(&freetype) != 0) return error.InitializeFreetype;
     errdefer _ = c.FT_Done_FreeType(freetype);
@@ -88,17 +84,16 @@ pub fn init(options: InitOptions) InitializeError!Sdl2Platform {
         .window = window,
         .renderer = renderer,
         .freetype = freetype,
-        .backevent_id = backevent_id,
         .mouse_pos = null,
         .initial_run = true,
     };
 }
 
-/// Runs the event loop until a backevent is received. This is typically used with a while loop.
+/// Runs the event loop until the application exists.
 pub fn run(
     self: *Sdl2Platform,
     root: *zenolith.widget.Widget,
-) anyerror!?zenolith.backevent.Backevent {
+) anyerror!void {
     // Initial layout pass before we get a resize event.
     if (self.initial_run) {
         var width: c_int = 0;
@@ -125,15 +120,9 @@ pub fn run(
 
         if (c.SDL_WaitEvent(&ev) != 1) return error.GetEvents;
 
-        if (ev.type == self.backevent_id) {
-            const evp: *zenolith.backevent.Backevent = @ptrCast(@alignCast(ev.user.data1));
-            defer self.alloc.destroy(evp);
-            return evp.*;
-        }
-
         switch (ev.type) {
             // quit event - exit
-            c.SDL_QUIT => return null,
+            c.SDL_QUIT => return,
 
             c.SDL_WINDOWEVENT => switch (ev.window.event) {
                 // window resized - redo tree layout
@@ -343,17 +332,4 @@ pub fn createFont(self: Sdl2Platform, opts: CreateFontOptions) CreateFontError!S
         .glyphs = std.AutoArrayHashMap(Sdl2Font.GlyphProperties, Sdl2Font.AtlasGlyph).init(self.alloc),
         .pixel_buf = std.ArrayList(u8).init(self.alloc),
     };
-}
-
-pub fn pushBackevent(self: *Sdl2Platform, ev: zenolith.backevent.Backevent) !void {
-    const evp = try self.alloc.create(zenolith.backevent.Backevent);
-    errdefer self.alloc.destroy(evp);
-    evp.* = ev;
-
-    var sdl_ev = c.SDL_Event{ .user = .{
-        .type = self.backevent_id,
-        .code = 1,
-        .data1 = evp,
-    } };
-    if (c.SDL_PushEvent(&sdl_ev) < 0) return error.PushEvent;
 }
