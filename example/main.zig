@@ -20,7 +20,7 @@ pub fn main() !void {
         .source = .{ .path = "/usr/share/fonts/noto/NotoSans-Regular.ttf" },
     }), {});
     defer font.deinit();
-    var zplatform = zenolith.platform.Platform.create(platform, {});
+    var zplatform = zenolith.platform.Platform.create(platform, .{});
 
     const root = try zenolith.widget.Box.init(alloc, .vertical);
     defer root.deinit();
@@ -70,7 +70,9 @@ pub fn main() !void {
         .style = .{ .size = 32 },
     }));
 
-    try root.addChild(null, try zenolith.widget.Button.init(alloc, "Click Me!"));
+    try root.addChild(null, try zenolith.widget.Button.init(alloc, "Button 1"));
+    try root.addChild(null, try zenolith.widget.Button.init(alloc, "Button 2"));
+    try root.addChild(null, try zenolith.widget.Button.init(alloc, "Button 3"));
 
     {
         var chunk = zenolith.text.Chunk.init(alloc);
@@ -108,10 +110,7 @@ pub fn main() !void {
         try root.addChild(null, try zenolith.widget.ChunkView.init(alloc, chunk));
     }
 
-    try zenolith.treevent.fire(root, zenolith.treevent.Link{
-        .parent = null,
-        .platform = &zplatform,
-    });
+    try root.link(null, &zplatform);
 
     try platform.run(root);
 }

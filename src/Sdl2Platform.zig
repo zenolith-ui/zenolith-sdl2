@@ -224,7 +224,7 @@ pub fn run(
 
                     switch (ev.type) {
                         c.SDL_KEYUP => {
-                            try zenolith.treevent.fire(root, zenolith.treevent.KeyPress{
+                            try zenolith.treevent.ptrFire(root, zenolith.treevent.KeyPress{
                                 .scancode = sc,
                                 .modifiers = mods,
                                 .action = .up,
@@ -232,14 +232,14 @@ pub fn run(
                         },
                         c.SDL_KEYDOWN => {
                             if (ev.key.repeat == 0) {
-                                try zenolith.treevent.fire(root, zenolith.treevent.KeyPress{
+                                try zenolith.treevent.ptrFire(root, zenolith.treevent.KeyPress{
                                     .scancode = sc,
                                     .modifiers = mods,
                                     .action = .down,
                                 });
                             }
 
-                            try zenolith.treevent.fire(root, zenolith.treevent.KeyPress{
+                            try zenolith.treevent.ptrFire(root, zenolith.treevent.KeyPress{
                                 .scancode = sc,
                                 .modifiers = mods,
                                 .action = .press,
