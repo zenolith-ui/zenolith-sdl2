@@ -224,7 +224,7 @@ pub fn run(
 
                     switch (ev.type) {
                         c.SDL_KEYUP => {
-                            try zenolith.treevent.ptrFire(root, zenolith.treevent.KeyPress{
+                            try zenolith.treevent.fire(root, zenolith.treevent.KeyPress{
                                 .scancode = sc,
                                 .modifiers = mods,
                                 .action = .up,
@@ -232,14 +232,14 @@ pub fn run(
                         },
                         c.SDL_KEYDOWN => {
                             if (ev.key.repeat == 0) {
-                                try zenolith.treevent.ptrFire(root, zenolith.treevent.KeyPress{
+                                try zenolith.treevent.fire(root, zenolith.treevent.KeyPress{
                                     .scancode = sc,
                                     .modifiers = mods,
                                     .action = .down,
                                 });
                             }
 
-                            try zenolith.treevent.ptrFire(root, zenolith.treevent.KeyPress{
+                            try zenolith.treevent.fire(root, zenolith.treevent.KeyPress{
                                 .scancode = sc,
                                 .modifiers = mods,
                                 .action = .press,
@@ -249,6 +249,19 @@ pub fn run(
                     }
                 } else {
                     log.warn("Got key event with unknown scancode: {}", .{ev.key.keysym});
+                }
+            },
+
+            c.SDL_TEXTINPUT => {
+                var iter = std.unicode.Utf8Iterator{
+                    .bytes = std.mem.sliceTo(&ev.text.text, 0),
+                    .i = 0,
+                };
+
+                while (iter.nextCodepoint()) |codepoint| {
+                    try zenolith.treevent.fire(root, zenolith.treevent.CharType{
+                        .codepoint = codepoint,
+                    });
                 }
             },
 

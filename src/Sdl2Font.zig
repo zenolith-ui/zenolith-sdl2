@@ -66,11 +66,19 @@ pub fn getGlyph(self: *Sdl2Font, codepoint: u21, style: zenolith.text.Style) !ze
 }
 
 pub fn yOffset(self: *Sdl2Font, size: u31) u31 {
-    if (c.FT_Set_Pixel_Sizes(self.face, 0, @intCast(size)) != 0)
-        // TODO: wonk
-        @panic("Unable to FT_Set_Pixel_Sizes for determining y offset");
+    _ = self;
+    // What is supposed to work:
+    //if (c.FT_Set_Pixel_Sizes(self.face, 0, @intCast(size)) != 0)
+    //    @panic("Unable to FT_Set_Pixel_Sizes for determining y offset");
 
-    return @intCast(self.face.*.size.*.metrics.height >> 6);
+    // All these produce equally nonsensical results and there seems to be no consensus which one is actually correct:
+    //return @intCast(self.face.*.size.*.metrics.height >> 6);
+    //return @intCast((self.face.*.size.*.metrics.ascender - self.face.*.size.*.metrics.descender) >> 6);
+    //return @intCast((c.FT_MulFix(self.face.*.bbox.yMax, self.face.*.size.*.metrics.y_scale) >> 6) -
+    //    (c.FT_MulFix(self.face.*.bbox.yMin, self.face.*.size.*.metrics.y_scale) >> 6));
+
+    // What actually works:
+    return size;
 }
 
 fn getSize(self: *Sdl2Font) zenolith.layout.Size {

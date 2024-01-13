@@ -17,7 +17,7 @@ pub fn main() !void {
     defer platform.deinit();
 
     var font = zenolith.text.Font.create(try platform.createFont(.{
-        .source = .{ .path = "/usr/share/fonts/noto/NotoSans-Regular.ttf" },
+        .source = .{ .path = "/usr/share/fonts/liberation/LiberationSans-Regular.ttf" },
     }), {});
     defer font.deinit();
     var zplatform = zenolith.platform.Platform.create(platform, .{});
@@ -30,24 +30,7 @@ pub fn main() !void {
         errdefer attrs.deinit(alloc);
 
         (try attrs.mod(alloc, zenolith.attreebute.CurrentFont)).* = .{ .font = &font };
-        (try attrs.mod(alloc, zenolith.attreebute.ButtonStyle)).* = .{
-            .background = .{
-                .stroked = .{
-                    .stroke = zenolith.Color.fromInt(0xeba0acff),
-                    .fill = zenolith.Color.fromInt(0x1e1e2eff),
-                    .width = 4,
-                },
-            },
-            .background_hovered = .{
-                .stroked = .{
-                    .stroke = zenolith.Color.fromInt(0xeba0acff),
-                    .fill = zenolith.Color.fromInt(0x313244ff),
-                    .width = 3,
-                },
-            },
-            .padding = 10,
-            .font_style = .{},
-        };
+        try zenolith.Theme.catppuccin_mocha.apply(alloc, &attrs);
 
         root.data.attreebutes = attrs;
     }
@@ -56,23 +39,17 @@ pub fn main() !void {
     try root.downcast(zenolith.widget.Box).?.addChildPositioned(
         root,
         null,
-        try zenolith.widget.Label.init(alloc, .{
-            .font = &font,
-            .text = "Hello, Zenolith!",
-            .style = .{ .size = 64 },
-        }),
+        try zenolith.widget.Label.init(alloc, "Hello, Zenolith!"),
         .center,
     );
 
-    try root.addChild(null, try zenolith.widget.Label.init(alloc, .{
-        .font = &font,
-        .text = "Labels!",
-        .style = .{ .size = 32 },
-    }));
+    try root.addChild(null, try zenolith.widget.Label.init(alloc, "Labels!"));
 
     try root.addChild(null, try zenolith.widget.Button.init(alloc, "Button 1"));
     try root.addChild(null, try zenolith.widget.Button.init(alloc, "Button 2"));
     try root.addChild(null, try zenolith.widget.Button.init(alloc, "Button 3"));
+
+    try root.addChild(null, try zenolith.widget.Spacer.init(alloc, .{.flex = 1}));
 
     {
         var chunk = zenolith.text.Chunk.init(alloc);
