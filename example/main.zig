@@ -49,7 +49,7 @@ pub fn main() !void {
     try root.addChild(null, try zenolith.widget.Button.init(alloc, "Button 2"));
     try root.addChild(null, try zenolith.widget.Button.init(alloc, "Button 3"));
 
-    try root.addChild(null, try zenolith.widget.Spacer.init(alloc, .{.flex = 1}));
+    try root.addChild(null, try zenolith.widget.Spacer.init(alloc, .{ .flex = 1 }));
 
     {
         var chunk = zenolith.text.Chunk.init(alloc);
