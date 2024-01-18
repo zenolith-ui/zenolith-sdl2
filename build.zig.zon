@@ -10,8 +10,8 @@
     .dependencies = .{
         .zenolith = .{
             //.path = "../zenolith",
-            .url = "git+https://git.mzte.de/zenolith/zenolith.git#6292688915f91da3ace4f38caa1dc33c718c8fc0",
-            .hash = "1220b709a856fe648fd5be6351b319d3626b3e368062d301e666a969032121b5ecde",
+            .url = "git+https://git.mzte.de/zenolith/zenolith.git#ad388687cd205079aab75074a542eadc79490df7",
+            .hash = "12201677a81b6f8133bbe9c7d3b2afc07b61bf632a070d13d57f995827022f6a1f54",
         },
     },
 }

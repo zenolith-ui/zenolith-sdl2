@@ -118,102 +118,124 @@ pub fn run(
     var last_time = std.time.nanoTimestamp();
 
     while (true) {
-        var ev: c.SDL_Event = undefined;
+        c.SDL_PumpEvents();
 
-        if (c.SDL_WaitEvent(&ev) != 1) return error.GetEvents;
+        // Wait until events are available.
+        if (c.SDL_WaitEvent(null) != 1) return error.GetEvents;
 
-        switch (ev.type) {
-            // quit event - exit
-            c.SDL_QUIT => return,
+        // Get all pending events.
+        var ev_buf: [64]c.SDL_Event = undefined;
+        const peep_ret = c.SDL_PeepEvents(
+            &ev_buf,
+            ev_buf.len,
+            c.SDL_GETEVENT,
+            c.SDL_FIRSTEVENT,
+            c.SDL_LASTEVENT,
+        );
+        if (peep_ret < 0) return error.GetEvents;
 
-            c.SDL_WINDOWEVENT => switch (ev.window.event) {
-                // window resized - redo tree layout
-                c.SDL_WINDOWEVENT_RESIZED => {
-                    const size = zenolith.layout.Size{
-                        .width = @intCast(ev.window.data1),
-                        .height = @intCast(ev.window.data2),
+        log.debug("got {} events", .{peep_ret});
+        const events = ev_buf[0..@intCast(peep_ret)];
+
+        // This code is responsible for building one KeyInput event out of consecutive
+        // SDL_KEYUP, SDL_KEYDOWN and SDL_TEXTINPUT events.
+        var text_input_buf: [1024]u8 = undefined;
+        var text_input_fbs = std.io.fixedBufferStream(&text_input_buf);
+        var cur_key_event = zenolith.treevent.KeyInput{
+            .action = .press,
+            .key = null,
+        };
+        for (events) |ev| {
+            switch (ev.type) {
+                // quit event - exit
+                c.SDL_QUIT => return,
+
+                c.SDL_WINDOWEVENT => switch (ev.window.event) {
+                    // window resized - redo tree layout
+                    c.SDL_WINDOWEVENT_RESIZED => {
+                        const size = zenolith.layout.Size{
+                            .width = @intCast(ev.window.data1),
+                            .height = @intCast(ev.window.data2),
+                        };
+
+                        try zenolith.treevent.fire(root, zenolith.treevent.LayoutSize{
+                            .final = true,
+                            .constraints = .{
+                                .min = .{ .width = 0, .height = 0 },
+                                .max = size,
+                            },
+                        });
+
+                        try zenolith.treevent.fire(root, zenolith.treevent.LayoutPosition{
+                            .position = .{ .x = 0, .y = 0 },
+                        });
+                    },
+                    else => {},
+                },
+
+                c.SDL_MOUSEMOTION => {
+                    const mouse_pos = zenolith.layout.Position{
+                        .x = @intCast(ev.motion.x),
+                        .y = @intCast(ev.motion.y),
                     };
+                    self.mouse_pos = mouse_pos;
 
-                    try zenolith.treevent.fire(root, zenolith.treevent.LayoutSize{
-                        .final = true,
-                        .constraints = .{
-                            .min = .{ .width = 0, .height = 0 },
-                            .max = size,
-                        },
-                    });
-
-                    try zenolith.treevent.fire(root, zenolith.treevent.LayoutPosition{
-                        .position = .{ .x = 0, .y = 0 },
+                    try zenolith.treevent.fire(root, zenolith.treevent.MouseMove{
+                        .pos = mouse_pos,
+                        .dx = ev.motion.xrel,
+                        .dy = ev.motion.yrel,
                     });
                 },
-                else => {},
-            },
 
-            c.SDL_MOUSEMOTION => {
-                const mouse_pos = zenolith.layout.Position{
-                    .x = @intCast(ev.motion.x),
-                    .y = @intCast(ev.motion.y),
-                };
-                self.mouse_pos = mouse_pos;
+                c.SDL_MOUSEBUTTONDOWN, c.SDL_MOUSEBUTTONUP => {
+                    const button: ?zenolith.treevent.Click.MouseButton = switch (ev.button.button) {
+                        c.SDL_BUTTON_LEFT => .left,
+                        c.SDL_BUTTON_MIDDLE => .middle,
+                        c.SDL_BUTTON_RIGHT => .right,
+                        else => null,
+                    };
 
-                try zenolith.treevent.fire(root, zenolith.treevent.MouseMove{
-                    .pos = mouse_pos,
-                    .dx = ev.motion.xrel,
-                    .dy = ev.motion.yrel,
-                });
-            },
+                    const actions: []const zenolith.treevent.Click.Action = switch (ev.type) {
+                        c.SDL_MOUSEBUTTONDOWN => &.{ .down, .click },
+                        c.SDL_MOUSEBUTTONUP => &.{.up},
+                        else => unreachable,
+                    };
 
-            c.SDL_MOUSEBUTTONDOWN, c.SDL_MOUSEBUTTONUP => {
-                const button: ?zenolith.treevent.Click.MouseButton = switch (ev.button.button) {
-                    c.SDL_BUTTON_LEFT => .left,
-                    c.SDL_BUTTON_MIDDLE => .middle,
-                    c.SDL_BUTTON_RIGHT => .right,
-                    else => null,
-                };
-
-                const actions: []const zenolith.treevent.Click.Action = switch (ev.type) {
-                    c.SDL_MOUSEBUTTONDOWN => &.{ .down, .click },
-                    c.SDL_MOUSEBUTTONUP => &.{.up},
-                    else => unreachable,
-                };
-
-                if (button) |but| {
-                    for (actions) |act| {
-                        try zenolith.treevent.fire(root, zenolith.treevent.Click{
-                            .pos = .{
-                                .x = @intCast(ev.button.x),
-                                .y = @intCast(ev.button.y),
-                            },
-                            .button = but,
-                            .action = act,
-                        });
+                    if (button) |but| {
+                        for (actions) |act| {
+                            try zenolith.treevent.fire(root, zenolith.treevent.Click{
+                                .pos = .{
+                                    .x = @intCast(ev.button.x),
+                                    .y = @intCast(ev.button.y),
+                                },
+                                .button = but,
+                                .action = act,
+                            });
+                        }
                     }
-                }
-            },
+                },
 
-            c.SDL_MOUSEWHEEL => if (self.mouse_pos) |mp| {
-                const btn: zenolith.treevent.Click.MouseButton = if (ev.wheel.y > 0)
-                    .scroll_up
-                else if (ev.wheel.y < 0)
-                    .scroll_down
-                else if (ev.wheel.x > 0)
-                    .scroll_right
-                else if (ev.wheel.x < 0)
-                    .scroll_left
-                else
-                    unreachable;
+                c.SDL_MOUSEWHEEL => if (self.mouse_pos) |mp| {
+                    const btn: zenolith.treevent.Click.MouseButton = if (ev.wheel.y > 0)
+                        .scroll_up
+                    else if (ev.wheel.y < 0)
+                        .scroll_down
+                    else if (ev.wheel.x > 0)
+                        .scroll_right
+                    else if (ev.wheel.x < 0)
+                        .scroll_left
+                    else
+                        unreachable;
 
-                try zenolith.treevent.fire(root, zenolith.treevent.Click{
-                    .pos = mp,
-                    .button = btn,
-                    .action = .click,
-                });
-            },
+                    try zenolith.treevent.fire(root, zenolith.treevent.Click{
+                        .pos = mp,
+                        .button = btn,
+                        .action = .click,
+                    });
+                },
 
-            c.SDL_KEYDOWN, c.SDL_KEYUP => {
-                if (util.convertScancode(ev.key.keysym.scancode)) |sc| {
+                c.SDL_KEYDOWN, c.SDL_KEYUP => {
                     const m = ev.key.keysym.mod;
-
                     const mods = zenolith.key.Modifiers{
                         .shift = m & c.KMOD_SHIFT != 0,
                         .ctrl = m & c.KMOD_CTRL != 0,
@@ -222,50 +244,60 @@ pub fn run(
                         .mode = m & c.KMOD_MODE != 0,
                     };
 
+                    const key = util.convertKey(ev.key.keysym.sym);
+                    const phys = util.convertScancode(ev.key.keysym.scancode);
+
                     switch (ev.type) {
-                        c.SDL_KEYUP => {
-                            try zenolith.treevent.fire(root, zenolith.treevent.KeyPress{
-                                .scancode = sc,
-                                .modifiers = mods,
-                                .action = .up,
-                            });
-                        },
                         c.SDL_KEYDOWN => {
+                            // We know there's a text input or key press event that hasn't been fired yet,
+                            // separate from this one if there's either a key set or text written to the input buffer.
+                            if (cur_key_event.key != null or text_input_fbs.pos != 0) {
+                                cur_key_event.text = text_input_fbs.getWritten();
+                                try zenolith.treevent.fire(root, cur_key_event);
+                                text_input_fbs.reset();
+                            }
+
                             if (ev.key.repeat == 0) {
-                                try zenolith.treevent.fire(root, zenolith.treevent.KeyPress{
-                                    .scancode = sc,
-                                    .modifiers = mods,
+                                try zenolith.treevent.fire(root, zenolith.treevent.KeyInput{
                                     .action = .down,
+                                    .key = key,
+                                    .physical = phys,
+                                    .modifiers = mods,
                                 });
                             }
 
-                            try zenolith.treevent.fire(root, zenolith.treevent.KeyPress{
-                                .scancode = sc,
-                                .modifiers = mods,
+                            cur_key_event = .{
                                 .action = .press,
+                                .key = key,
+                                .physical = phys,
+                                .modifiers = mods,
+                                .repeat = ev.key.repeat != 0,
+                            };
+                        },
+                        c.SDL_KEYUP => {
+                            try zenolith.treevent.fire(root, zenolith.treevent.KeyInput{
+                                .action = .up,
+                                .key = key,
+                                .physical = phys,
+                                .modifiers = mods,
                             });
                         },
                         else => unreachable,
                     }
-                } else {
-                    log.warn("Got key event with unknown scancode: {}", .{ev.key.keysym});
-                }
-            },
+                },
 
-            c.SDL_TEXTINPUT => {
-                var iter = std.unicode.Utf8Iterator{
-                    .bytes = std.mem.sliceTo(&ev.text.text, 0),
-                    .i = 0,
-                };
+                c.SDL_TEXTINPUT => {
+                    try text_input_fbs.writer().writeAll(std.mem.sliceTo(&ev.text.text, 0));
+                },
 
-                while (iter.nextCodepoint()) |codepoint| {
-                    try zenolith.treevent.fire(root, zenolith.treevent.CharType{
-                        .codepoint = codepoint,
-                    });
-                }
-            },
+                else => {},
+            }
+        }
 
-            else => {},
+        // Fire the text input treevent when applicable
+        if (cur_key_event.key != null or text_input_fbs.pos != 0) {
+            cur_key_event.text = text_input_fbs.getWritten();
+            try zenolith.treevent.fire(root, cur_key_event);
         }
 
         // do render pass after events
