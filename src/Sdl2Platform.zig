@@ -134,7 +134,6 @@ pub fn run(
         );
         if (peep_ret < 0) return error.GetEvents;
 
-        log.debug("got {} events", .{peep_ret});
         const events = ev_buf[0..@intCast(peep_ret)];
 
         // This code is responsible for building one KeyInput event out of consecutive
@@ -315,6 +314,14 @@ pub fn run(
 
         c.SDL_RenderPresent(self.renderer);
     }
+}
+
+/// Quits a running application by submitting a quit event to the event queue,
+/// making the application exit after all queued events were processed.
+pub fn quit(self: *Sdl2Platform) !void {
+    _ = self; // Pretend this isn't global state.
+    var ev = c.SDL_Event{ .quit = .{ .type = c.SDL_QUIT } };
+    if (c.SDL_PushEvent(&ev) < 0) return error.PushEvent;
 }
 
 pub fn deinit(self: Sdl2Platform) void {

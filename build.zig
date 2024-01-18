@@ -1,8 +1,14 @@
 const std = @import("std");
 
-pub fn build(b: *std.Build) void {
+pub fn build(b: *std.Build) !void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
+
+    const static = b.option(
+        bool,
+        "static",
+        "Statically link SDL2 and FreeType. Not supported on Linux.",
+    ) orelse false;
 
     const zenolith_mod = b.dependency("zenolith", .{
         .target = target,
@@ -16,8 +22,27 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
         .link_libc = true,
     });
-    mod.linkSystemLibrary("SDL2", .{});
-    mod.linkSystemLibrary("freetype2", .{});
+
+    if (static) {
+        if (mod.resolved_target.?.result.os.tag == .linux) {
+            std.debug.print(
+                \\Statically linking SDL2 is not currently possible on Linux targets.
+                \\This is because andrew's SDL fork with the Zig build system doesn't work
+                \\on Linux and is, in fact, not my fault :)
+                \\
+            , .{});
+            return error.StaticLinkingNotSupported;
+        }
+
+        const sdl2_dep = b.dependency("sdl2", .{ .target = target, .optimize = optimize });
+        const freetype_dep = b.dependency("freetype", .{ .target = target, .optimize = optimize });
+
+        mod.linkLibrary(sdl2_dep.artifact("SDL2"));
+        mod.linkLibrary(freetype_dep.artifact("freetype"));
+    } else {
+        mod.linkSystemLibrary("SDL2", .{});
+        mod.linkSystemLibrary("freetype2", .{});
+    }
 
     const main_tests = b.addTest(.{
         .root_source_file = .{ .path = "src/main.zig" },

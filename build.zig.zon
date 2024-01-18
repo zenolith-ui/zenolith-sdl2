@@ -13,5 +13,14 @@
             .url = "git+https://git.mzte.de/zenolith/zenolith.git#ad388687cd205079aab75074a542eadc79490df7",
             .hash = "12201677a81b6f8133bbe9c7d3b2afc07b61bf632a070d13d57f995827022f6a1f54",
         },
+
+        .sdl2 = .{
+            .url = "git+https://git.mzte.de/mirrors/SDL.git#db4a162db2f6f59f737d03f441455dc9524d5793",
+            .hash = "1220c5360c9c71c215baa41b46ec18d0711059b48416a2b1cf96c7c2d87b2e8e4cf6",
+        },
+        .freetype = .{
+            .url = "https://git.mzte.de/mirrors/freetype.git#398638fd1cb723e478658ea371fe3be1a4dce0ae.tar.gz",
+            .hash = "12208c57b72e3fb5c8d5d3e667e2e21ca1d9e2b6fc3f84182b320f63933f591823da",
+        },
     },
 }

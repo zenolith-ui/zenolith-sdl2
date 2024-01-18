@@ -1,5 +1,5 @@
 pub const c = @cImport({
-    @cInclude("SDL.h");
+    @cInclude("SDL2/SDL.h");
     @cInclude("freetype/freetype.h");
 });
 
