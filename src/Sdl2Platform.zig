@@ -96,21 +96,7 @@ pub fn run(
 ) anyerror!void {
     // Initial layout pass before we get a resize event.
     if (self.initial_run) {
-        var width: c_int = 0;
-        var height: c_int = 0;
-        c.SDL_GetWindowSize(self.window, &width, &height);
-
-        try zenolith.treevent.fire(root, zenolith.treevent.LayoutSize{
-            .final = true,
-            .constraints = .{
-                .min = .{ .width = 0, .height = 0 },
-                .max = .{ .width = @intCast(width), .height = @intCast(height) },
-            },
-        });
-
-        try zenolith.treevent.fire(root, zenolith.treevent.LayoutPosition{
-            .position = .{ .x = 0, .y = 0 },
-        });
+        try self.relayoutRoot(root);
 
         self.initial_run = false;
     }
@@ -160,13 +146,13 @@ pub fn run(
                         try zenolith.treevent.fire(root, zenolith.treevent.LayoutSize{
                             .final = true,
                             .constraints = .{
-                                .min = .{ .width = 0, .height = 0 },
+                                .min = zenolith.layout.Size.zero,
                                 .max = size,
                             },
                         });
 
                         try zenolith.treevent.fire(root, zenolith.treevent.LayoutPosition{
-                            .position = .{ .x = 0, .y = 0 },
+                            .position = zenolith.layout.Position.zero,
                         });
                     },
                     else => {},
@@ -391,4 +377,22 @@ pub fn createFont(self: Sdl2Platform, opts: CreateFontOptions) CreateFontError!S
         .glyphs = std.AutoArrayHashMap(Sdl2Font.GlyphProperties, Sdl2Font.AtlasGlyph).init(self.alloc),
         .pixel_buf = std.ArrayList(u8).init(self.alloc),
     };
+}
+
+pub fn relayoutRoot(self: *Sdl2Platform, root: *zenolith.widget.Widget) !void {
+    var width: c_int = 0;
+    var height: c_int = 0;
+    c.SDL_GetWindowSize(self.window, &width, &height);
+
+    try zenolith.treevent.fire(root, zenolith.treevent.LayoutSize{
+        .final = true,
+        .constraints = .{
+            .min = .{ .width = 0, .height = 0 },
+            .max = .{ .width = @intCast(width), .height = @intCast(height) },
+        },
+    });
+
+    try zenolith.treevent.fire(root, zenolith.treevent.LayoutPosition{
+        .position = .{ .x = 0, .y = 0 },
+    });
 }
