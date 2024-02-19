@@ -290,7 +290,11 @@ pub fn run(
         if (c.SDL_SetRenderDrawColor(self.renderer, 0, 0, 0, 0xff) != 0) return error.Render;
         if (c.SDL_RenderClear(self.renderer) != 0) return error.Render;
 
-        var painter = zenolith.painter.Painter.create(Sdl2Painter{ .renderer = self.renderer }, {});
+        var painter = zenolith.painter.Painter.create(
+            Sdl2Painter{ .renderer = self.renderer },
+            zenolith.painter.PainterData.init(root.data.allocator),
+        );
+        defer painter.data.deinit();
         const current_time = std.time.nanoTimestamp();
         try zenolith.treevent.fire(root, zenolith.treevent.Draw{
             .painter = &painter,
