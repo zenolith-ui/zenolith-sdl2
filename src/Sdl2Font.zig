@@ -7,8 +7,10 @@ const util = @import("util.zig");
 const ffi = @import("ffi.zig");
 const c = ffi.c;
 
+const Sdl2Texture = @import("Sdl2Texture.zig");
+
 face: c.FT_Face,
-atlas: *c.SDL_Texture,
+atlas: Sdl2Texture,
 renderer: *c.SDL_Renderer,
 
 /// This is an ArrayHashMap to speed up iteration which is requried for collision checking.
@@ -30,7 +32,7 @@ pub const GlyphProperties = struct {
 };
 
 pub fn deinit(self: *Sdl2Font) void {
-    c.SDL_DestroyTexture(self.atlas);
+    self.atlas.deinit();
     _ = c.FT_Done_Face(self.face);
     self.glyphs.deinit();
     self.pixel_buf.deinit();
@@ -89,7 +91,7 @@ fn getSize(self: *Sdl2Font) zenolith.layout.Size {
     var h: c_int = 0;
 
     // This will only error if I messed up somewhere.
-    if (c.SDL_QueryTexture(self.atlas, null, null, &w, &h) != 0) unreachable;
+    if (c.SDL_QueryTexture(self.atlas.tex, null, null, &w, &h) != 0) unreachable;
 
     return .{ .width = @intCast(w), .height = @intCast(h) };
 }
@@ -158,13 +160,7 @@ pub fn addAtlastSprite(self: *Sdl2Font, data: []const u8, width: u31) !zenolith.
         },
     };
 
-    const rec = util.toSdlRect(rect);
-    if (c.SDL_UpdateTexture(
-        self.atlas,
-        &rec,
-        self.pixel_buf.items.ptr,
-        @intCast(width * 4),
-    ) != 0) return error.UpdateTexture;
+    try self.atlas.setPixels(self.pixel_buf.items, @intCast(width * 4), rect);
 
     return rect;
 }

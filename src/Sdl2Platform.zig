@@ -342,7 +342,7 @@ pub const CreateFontOptions = struct {
     atlas_size: zenolith.layout.Size = .{ .width = 512, .height = 1024 },
 };
 
-pub const CreateFontError = ffi.FreeTypeError || error{CreateTexture};
+pub const CreateFontError = ffi.FreeTypeError || error{ CreateTexture, SetBlendMode };
 
 pub fn createFont(self: Sdl2Platform, opts: CreateFontOptions) CreateFontError!Sdl2Font {
     var face: c.FT_Face = undefined;
@@ -363,16 +363,13 @@ pub fn createFont(self: Sdl2Platform, opts: CreateFontOptions) CreateFontError!S
     }
     errdefer _ = c.FT_Done_Face(face);
 
-    const atlas = c.SDL_CreateTexture(
-        self.renderer,
-        c.SDL_PIXELFORMAT_RGBA8888,
-        c.SDL_TEXTUREACCESS_STATIC,
-        @intCast(opts.atlas_size.width),
-        @intCast(opts.atlas_size.height),
-    ) orelse return error.CreateTexture;
-    errdefer c.SDL_DestroyTexture(atlas);
+    const atlas = try self.createTexture(.{
+        .size = opts.atlas_size,
+        .pixel_format = .RGBA8888,
+        .pixel_access = .static,
+    });
 
-    if (c.SDL_SetTextureBlendMode(atlas, c.SDL_BLENDMODE_BLEND) != 0) return error.CreateTexture;
+    try atlas.setBlendMode(.blend);
 
     return .{
         .face = face,
@@ -399,4 +396,23 @@ pub fn relayoutRoot(self: *Sdl2Platform, root: *zenolith.widget.Widget) !void {
     try zenolith.treevent.fire(root, zenolith.treevent.LayoutPosition{
         .position = .{ .x = 0, .y = 0 },
     });
+}
+const CreateTextureOptions = struct {
+    size: zenolith.layout.Size,
+    pixel_format: Sdl2Texture.PixelFormat,
+    pixel_access: Sdl2Texture.PixelAccess = .static,
+};
+
+pub fn createTexture(self: Sdl2Platform, options: CreateTextureOptions) !Texture {
+    const texture = c.SDL_CreateTexture(
+        self.renderer,
+        @intFromEnum(options.pixel_format),
+        @intFromEnum(options.pixel_access),
+        options.size.width,
+        options.size.height,
+    ) orelse return error.CreateTexture;
+
+    return Texture{
+        .tex = texture,
+    };
 }

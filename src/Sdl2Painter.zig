@@ -84,12 +84,12 @@ pub fn span(
     const font = zspan.font.downcast(Sdl2Font) orelse unreachable;
 
     if (c.SDL_SetTextureColorMod(
-        font.atlas,
+        font.atlas.tex,
         zspan.style.color.r,
         zspan.style.color.g,
         zspan.style.color.b,
     ) != 0) return error.Render;
-    if (c.SDL_SetTextureAlphaMod(font.atlas, zspan.style.color.a) != 0) return error.Render;
+    if (c.SDL_SetTextureAlphaMod(font.atlas.tex, zspan.style.color.a) != 0) return error.Render;
 
     for (zspan.glyphs.items) |g| {
         // This is sound as the span will have already gotten the glyph from the font,
@@ -115,7 +115,7 @@ pub fn span(
 
         if (c.SDL_RenderCopy(
             self.renderer,
-            font.atlas,
+            font.atlas.tex,
             &util.toSdlRect(sprite_clip),
             &util.toSdlRect(clip_rect),
         ) != 0) return error.Render;
