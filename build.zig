@@ -16,7 +16,7 @@ pub fn build(b: *std.Build) !void {
     }).module("zenolith");
 
     const mod = b.addModule("zenolith-sdl2", .{
-        .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = "src/main.zig" } },
+        .root_source_file = b.path("src/main.zig"),
         .imports = &.{.{ .name = "zenolith", .module = zenolith_mod }},
         .target = target,
         .optimize = optimize,
