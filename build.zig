@@ -45,7 +45,7 @@ pub fn build(b: *std.Build) !void {
     }
 
     const main_tests = b.addTest(.{
-        .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = "src/main.zig" } },
+        .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
     });
@@ -58,7 +58,7 @@ pub fn build(b: *std.Build) !void {
 
     const example_exe = b.addExecutable(.{
         .name = "zenolith-sdl2-example",
-        .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = "example/main.zig" } },
+        .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
     });
