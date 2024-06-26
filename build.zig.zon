@@ -9,8 +9,8 @@
 
     .dependencies = .{
         .zenolith = .{
-            .url = "git+https://git.mzte.de/coding-agent/zenolith#b5de5e14104675b76caa246a20a45f991bb9f2c1",
-            .hash = "1220f1e479d85174b8d07cbcd676b10ec02c06a22e36e820eff8af089b47f972829f",
+            .url = "git+https://git.mzte.de/zenolith/zenolith.git#700178d64da7883740ab68287944b38fc392e075",
+            .hash = "1220fa37121f4b93b6b87f7ffac98c3f0868e3eaa8c85f04142d3511df85c1cd5081",
         },
 
         .sdl2 = .{
