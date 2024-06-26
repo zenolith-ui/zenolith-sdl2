@@ -58,7 +58,7 @@ pub fn build(b: *std.Build) !void {
 
     const example_exe = b.addExecutable(.{
         .name = "zenolith-sdl2-example",
-        .root_source_file = b.path("src/main.zig"),
+        .root_source_file = b.path("example/main.zig"),
         .target = target,
         .optimize = optimize,
     });
