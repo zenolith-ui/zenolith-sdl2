@@ -9,17 +9,17 @@
 
     .dependencies = .{
         .zenolith = .{
-            .url = "git+https://git.mzte.de/zenolith/zenolith.git#4e67de14b301048e73499f2ff46800b87b923609",
-            .hash = "1220236794547a0f13870e5c2d2b00e02571f3beee219303d2843e9aedc1b0eaf015",
+            .url = "git+https://git.mzte.de/zenolith/zenolith.git#700178d64da7883740ab68287944b38fc392e075",
+            .hash = "1220fa37121f4b93b6b87f7ffac98c3f0868e3eaa8c85f04142d3511df85c1cd5081",
         },
 
         .sdl2 = .{
-            .url = "git+https://git.mzte.de/mirrors/SDL.git#db4a162db2f6f59f737d03f441455dc9524d5793",
-            .hash = "1220c5360c9c71c215baa41b46ec18d0711059b48416a2b1cf96c7c2d87b2e8e4cf6",
+            .url = "git+https://git.mzte.de/mirrors/SDL.git#d3ce72923ada60041a6a4a92628408b0908ce4e0",
+            .hash = "1220c8b7fffe055e95a991cbaf5d86b4d5ea380294b0b4326b2ee46110613cf7972e",
         },
         .freetype = .{
-            .url = "git+https://git.mzte.de/mirrors/freetype.git#398638fd1cb723e478658ea371fe3be1a4dce0ae",
-            .hash = "12208c57b72e3fb5c8d5d3e667e2e21ca1d9e2b6fc3f84182b320f63933f591823da",
+            .url = "git+https://git.mzte.de/mirrors/freetype.git#e8c5b37f320db03acba410d993441815bc809606",
+            .hash = "1220babb7939707ca390b934657dfd3c8c3a6a78cc9442e4cbd43e3f9ffd49daec9e",
         },
     },
 }

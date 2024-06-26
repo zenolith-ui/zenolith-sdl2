@@ -16,7 +16,7 @@ pub fn build(b: *std.Build) !void {
     }).module("zenolith");
 
     const mod = b.addModule("zenolith-sdl2", .{
-        .root_source_file = .{ .path = "src/main.zig" },
+        .root_source_file = b.path("src/main.zig"),
         .imports = &.{.{ .name = "zenolith", .module = zenolith_mod }},
         .target = target,
         .optimize = optimize,
@@ -45,7 +45,7 @@ pub fn build(b: *std.Build) !void {
     }
 
     const main_tests = b.addTest(.{
-        .root_source_file = .{ .path = "src/main.zig" },
+        .root_source_file = b.path("src/main.zig"),
         .target = target,
         .optimize = optimize,
     });
@@ -58,7 +58,7 @@ pub fn build(b: *std.Build) !void {
 
     const example_exe = b.addExecutable(.{
         .name = "zenolith-sdl2-example",
-        .root_source_file = .{ .path = "example/main.zig" },
+        .root_source_file = b.path("example/main.zig"),
         .target = target,
         .optimize = optimize,
     });
